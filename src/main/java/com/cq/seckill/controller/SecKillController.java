@@ -1,5 +1,6 @@
 package com.cq.seckill.controller;
 
+import com.cq.seckill.exception.GlobalException;
 import com.cq.seckill.pojo.Order;
 import com.cq.seckill.pojo.SecKillMessage;
 import com.cq.seckill.pojo.SecKillOrder;
@@ -12,6 +13,8 @@ import com.cq.seckill.utils.JsonUtil;
 import com.cq.seckill.vo.GoodsVo;
 import com.cq.seckill.vo.RespBean;
 import com.cq.seckill.vo.RespBeanEnum;
+import com.pig4cloud.captcha.ArithmeticCaptcha;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -27,11 +30,15 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.ResponseBody;
 
+import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
+@Slf4j
 @Controller
 @RequestMapping("/seckill")
 public class SecKillController implements InitializingBean {
@@ -50,11 +57,21 @@ public class SecKillController implements InitializingBean {
 
     private Map<Long,Boolean> EmptyStockMap = new HashMap<>();
 
+    /**
+     * 获取秒杀连接
+     * @param user
+     * @param goodsId
+     * @return
+     */
     @RequestMapping(value = "/path", method = RequestMethod.GET)
     @ResponseBody
-    public RespBean getPath(User user, Long goodsId) {
+    public RespBean getPath(User user, Long goodsId, String captcha) {
         if(user == null){
             return RespBean.error(RespBeanEnum.SESSION_ERROR);
+        }
+        boolean check = orderService.checkCaptcha(user,goodsId,captcha);
+        if(!check){
+            return RespBean.error(RespBeanEnum.CAPTCHA_ERROR);
         }
         String url = orderService.createPath(user, goodsId);
         return RespBean.success(url);
@@ -133,5 +150,25 @@ public class SecKillController implements InitializingBean {
         }
         Long orderId = seckillOrderService.getResult(user,goodsId);
         return RespBean.success(orderId);
+    }
+
+    @RequestMapping(value = "/captcha",method = RequestMethod.GET)
+    public void verifyCode(User user, Long goodsId, HttpServletResponse response) {
+        if(user == null || goodsId < 0){
+            throw new GlobalException(RespBeanEnum.REQUEST_ILLEGAL);
+        }
+        //设置请求头为输出图片的类型
+        response.setContentType("image/jpg");
+        response.setHeader("Pargam","No-cache");
+        response.setHeader("Cache-Control","No-cache");
+        response.setDateHeader("Expires",0);
+        //生成验证码，放入Redis
+        ArithmeticCaptcha captcha = new ArithmeticCaptcha(130,32,3);
+        redisTemplate.opsForValue().set("captcha:"+user.getId()+":"+goodsId,captcha.text(),300, TimeUnit.SECONDS);
+        try {
+            captcha.out(response.getOutputStream());
+        } catch (IOException e) {
+            log.error("验证码生成失败",e.getMessage());
+        }
     }
 }

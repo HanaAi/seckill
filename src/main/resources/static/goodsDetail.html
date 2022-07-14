@@ -41,19 +41,19 @@
                 <span id="seckillTip"></span>
             </td>
             <td>
-                <button class="btn btn-primary btn-block" type="button" id="buyButton" onclick="getSeckillPath()">立即秒杀
-                    <input type="hidden" name="goodsId" id="goodsId">
-                </button>
-<!--                <div class="row">-->
-<!--                    <div class="form-inline">-->
-<!--                        <img id="captchaImg" width="130" height="32" onclick="refreshCaptcha()" style="display: none">-->
-<!--                        <input id="captcha" class="form-control" style="display: none">-->
-<!--                        <button class="btn btn-primary" type="submit" id="buyButton"-->
-<!--                                onclick="getSeckillPath()">立即秒杀-->
-<!--                            <input type="hidden" name="goodsId" id="goodsId">-->
-<!--                        </button>-->
-<!--                    </div>-->
-<!--                </div>-->
+<!--                <button class="btn btn-primary btn-block" type="button" id="buyButton" onclick="getSeckillPath()">立即秒杀-->
+<!--                    <input type="hidden" name="goodsId" id="goodsId">-->
+<!--                </button>-->
+                <div class="row">
+                    <div class="form-inline">
+                        <img id="captchaImg" width="130" height="32" onclick="refreshCaptcha()" style="display: none">
+                        <input id="captcha" class="form-control" style="display: none">
+                        <button class="btn btn-primary" type="submit" id="buyButton"
+                                onclick="getSeckillPath()">立即秒杀
+                            <input type="hidden" name="goodsId" id="goodsId">
+                        </button>
+                    </div>
+                </div>
 
             </td>
         </tr>
@@ -78,9 +78,9 @@
         getDetails();
     });
 
-    // function refreshCaptcha() {
-    //     $("#captchaImg").attr("src", "/secKill/captcha?goodsId=" + $("#goodsId").val() + "&time=" + new Date());
-    // }
+    function refreshCaptcha() {
+        $("#captchaImg").attr("src", "/seckill/captcha?goodsId=" + $("#goodsId").val() + "&time=" + new Date());
+    }
 
     function getSeckillPath() {
         var goodsId = $("#goodsId").val();

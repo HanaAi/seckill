@@ -54,6 +54,11 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
     @Transactional
     @Override
     public Order seckill(User user, GoodsVo goods) {
+//        SecKillOrder orderE = seckillOrderService.getOne(new QueryWrapper<SecKillOrder>().eq("user_id", user.getId())
+//                .eq("goods_id", goods.getId()));
+//        if(orderE != null){
+//            throw new GlobalException(RespBeanEnum.REPEATE_ERROR);
+//        }
         ValueOperations valueOperations = redisTemplate.opsForValue();
         //秒杀商品表减库存
         SecKillGoods seckillGoods = seckillGoodsService.getOne(new QueryWrapper<SecKillGoods>().eq(
@@ -123,5 +128,14 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
         String redisPath = (String) redisTemplate.opsForValue().get("seckillPath:" + user.getId() + ":" + goodsId);
 
         return path.equals(redisPath);
+    }
+
+    @Override
+    public boolean checkCaptcha(User user, Long goodsId, String captcha) {
+        if(user==null||goodsId<0|| StringUtils.isEmpty(captcha)){
+            return false;
+        }
+        String redisCaptcha = (String) redisTemplate.opsForValue().get("captcha:"+user.getId()+":"+goodsId);
+        return captcha.equals(redisCaptcha);
     }
 }

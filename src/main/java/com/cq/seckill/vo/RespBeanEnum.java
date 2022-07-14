@@ -21,6 +21,8 @@ public enum RespBeanEnum {
     BIND_ERROR(500202,"参数校验失败"),
     //秒杀接口校验失败
     REQUEST_ILLEGAL(500203,"请求非法，请重试"),
+    //验证码输入错误
+    CAPTCHA_ERROR(500204,"验证码输入错误，请重试"),
     //秒杀模块5004xx
     EMPTY_STOCK(500400,"库存为空"),
     //重复抢购
