@@ -16,13 +16,18 @@ import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
+import org.springframework.data.redis.core.script.DefaultRedisScript;
+import org.springframework.data.redis.core.script.RedisScript;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.util.CollectionUtils;
+import org.springframework.util.StringUtils;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.ResponseBody;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -40,44 +45,43 @@ public class SecKillController implements InitializingBean {
     private RedisTemplate redisTemplate;
     @Autowired
     private MQSender mqSender;
+    @Autowired
+    private RedisScript<Long> script;
 
     private Map<Long,Boolean> EmptyStockMap = new HashMap<>();
+
+    @RequestMapping(value = "/path", method = RequestMethod.GET)
+    @ResponseBody
+    public RespBean getPath(User user, Long goodsId) {
+        if(user == null){
+            return RespBean.error(RespBeanEnum.SESSION_ERROR);
+        }
+        String url = orderService.createPath(user, goodsId);
+        return RespBean.success(url);
+    }
 
     /**
      * 秒杀
      * Windows优化前 QPS ： 257.8
      * 优化后: 636.3
-     * @param model
+     * @param path
      * @param user
      * @param goodsId
      * @return
      */
-    @RequestMapping(value = "doSeckill" , method = RequestMethod.POST)
+    @RequestMapping(value = "/{path}/doSeckill" , method = RequestMethod.POST)
     @ResponseBody
-    public RespBean doSecKill(Model model, User user, Long goodsId){
+    public RespBean doSecKill(@PathVariable String path, User user, Long goodsId){
         if(user == null){
             return RespBean.error(RespBeanEnum.SESSION_ERROR);
         }
-//        GoodsVo goods = goodsService.findGoodsVoByGoodsId(goodsId);
-//        if(goods.getStockCount() < 1){
-//            model.addAttribute("errmsg", RespBeanEnum.EMPTY_STOCK.getMessage());
-//            return "secKillFail";
-//        }
-        /** 旧方法
-        //判断是否重复抢购
-        SeckillOrder seckillOrder = seckillOrderService.getOne(new QueryWrapper<SeckillOrder>().eq("user_id", user.getId()).eq(
-                "goods_id", goodsId));
-        if(seckillOrder != null){
-            model.addAttribute("errmsg", RespBeanEnum.REPEATE_ERROR.getMessage());
-            return "secKillFail";
-        }
-        Order order = orderService.seckill(user,goods);
-        model.addAttribute("order",order);
-        model.addAttribute("goods",goods);
-        return "orderDetail";
-         */
         //redis优化
         ValueOperations valueOperations = redisTemplate.opsForValue();
+        boolean check = orderService.checkPath(user, goodsId,path);
+        if(!check){
+            return RespBean.error(RespBeanEnum.REQUEST_ILLEGAL);
+        }
+
         SecKillOrder seckillOrder = (SecKillOrder) redisTemplate.opsForValue().get("order:"+user.getId()+
                 ":" + goodsId);
         if(seckillOrder != null){
@@ -88,12 +92,14 @@ public class SecKillController implements InitializingBean {
             return RespBean.error(RespBeanEnum.EMPTY_STOCK);
         }
         //预减库存操作
-        Long stock = valueOperations.decrement("seckillGoods:"+goodsId);
-        if(stock < 0){
+        Long stock = (Long) redisTemplate.execute(script,
+                Collections.singletonList("seckillGoods:" + goodsId), Collections.EMPTY_LIST);
+        if (stock < 0) {
             EmptyStockMap.put(goodsId,true);
-            valueOperations.increment("seckillGoods:"+goodsId);
+            valueOperations.increment("seckillGoods:" + goodsId);
             return RespBean.error(RespBeanEnum.EMPTY_STOCK);
         }
+        //请求入队
         SecKillMessage seckillMessage = new SecKillMessage(user,goodsId);
         mqSender.sendSecKillMessage(JsonUtil.object2JsonStr(seckillMessage));
         return RespBean.success(0);
