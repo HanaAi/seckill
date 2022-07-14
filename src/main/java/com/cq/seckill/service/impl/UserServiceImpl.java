@@ -111,4 +111,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         }
         return RespBean.error(RespBeanEnum.PASSWORD_UPDATE_FAIL);
     }
+
+    @Override
+    public User getByUserTicket(String ticket, HttpServletRequest request, HttpServletResponse response) {
+        return null;
+    }
 }

@@ -23,6 +23,8 @@ public enum RespBeanEnum {
     REQUEST_ILLEGAL(500203,"请求非法，请重试"),
     //验证码输入错误
     CAPTCHA_ERROR(500204,"验证码输入错误，请重试"),
+    //操作次数过多
+    ACCESS_LIMIT_REACHED(500205,"操作次数过多，请稍后再试"),
     //秒杀模块5004xx
     EMPTY_STOCK(500400,"库存为空"),
     //重复抢购

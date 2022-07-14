@@ -1,5 +1,6 @@
 package com.cq.seckill.controller;
 
+import com.cq.seckill.config.AccessLimit;
 import com.cq.seckill.exception.GlobalException;
 import com.cq.seckill.pojo.Order;
 import com.cq.seckill.pojo.SecKillMessage;
@@ -63,12 +64,14 @@ public class SecKillController implements InitializingBean {
      * @param goodsId
      * @return
      */
+    @AccessLimit(second = 5,maxCount = 5,needLogin = true)
     @RequestMapping(value = "/path", method = RequestMethod.GET)
     @ResponseBody
     public RespBean getPath(User user, Long goodsId, String captcha) {
         if(user == null){
             return RespBean.error(RespBeanEnum.SESSION_ERROR);
         }
+        System.out.println(captcha);
         boolean check = orderService.checkCaptcha(user,goodsId,captcha);
         if(!check){
             return RespBean.error(RespBeanEnum.CAPTCHA_ERROR);
